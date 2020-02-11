@@ -1,0 +1,22 @@
+{
+    "name": "stepicm/mautic-infobip-bundle",
+    "description": "Mautic Infobip SMS bundle",
+    "type": "mautic-plugin",
+    "extra": {
+      "install-directory-name": "MauticInfoBipSmsBundle"
+    },
+    "require": {
+      "mautic/composer-plugin": "^1.0.1"
+    },
+    "license": "MIT",
+    "authors": [
+      {
+        "name": "mjlogan"
+      },
+      {
+        "name": "stepicm",
+        "email": "grft801@airmail.cc"
+      }
+    ]
+  }
+  
