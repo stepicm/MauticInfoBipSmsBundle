@@ -25,11 +25,13 @@ use Mautic\LeadBundle\Entity\Lead;
 use Mautic\LeadBundle\Model\LeadModel;
 use Mautic\PageBundle\Model\TrackableModel;
 use MauticPlugin\MauticInfoBipSmsBundle\Api\AbstractSmsApi;
+use MauticPlugin\MauticInfoBipSmsBundle\Api\ApiResponse;
 use MauticPlugin\MauticInfoBipSmsBundle\Entity\Sms;
 use MauticPlugin\MauticInfoBipSmsBundle\Entity\Stat;
 use MauticPlugin\MauticInfoBipSmsBundle\Event\SmsEvent;
 use MauticPlugin\MauticInfoBipSmsBundle\Event\SmsSendEvent;
 use MauticPlugin\MauticInfoBipSmsBundle\SmsEvents;
+use MauticPlugin\MauticInfoBipSmsBundle\Tools\Uuid;
 use Symfony\Component\EventDispatcher\Event;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
@@ -67,7 +69,7 @@ class SmsModel extends FormModel implements AjaxLookupModelInterface
      * @param MessageQueueModel $messageQueueModel
      * @param AbstractSmsApi    $smsApi
      */
-    public function __construct(TrackableModel $pageTrackableModel, LeadModel $leadModel, MessageQueueModel $messageQueueModel,         AbstractSmsApi $smsApi)
+    public function __construct(TrackableModel $pageTrackableModel, LeadModel $leadModel, MessageQueueModel $messageQueueModel, AbstractSmsApi $smsApi)
     {
         $this->pageTrackableModel = $pageTrackableModel;
         $this->leadModel          = $leadModel;
@@ -200,6 +202,8 @@ class SmsModel extends FormModel implements AjaxLookupModelInterface
         $results       = [];
         $contacts      = [];
         $fetchContacts = [];
+        $trackingHash = Uuid::get();
+
         foreach ($sendTo as $lead) {
             if (!$lead instanceof Lead) {
                 $fetchContacts[] = $lead;
@@ -302,13 +306,29 @@ class SmsModel extends FormModel implements AjaxLookupModelInterface
                         'content' => $tokenEvent->getContent(),
                     ];
 
-                    $metadata = $this->smsApi->sendSms($leadPhoneNumber, $tokenEvent->getContent());
+                    $metadata = $this->smsApi->sendSms(
+                        $leadPhoneNumber,
+                        $tokenEvent->getContent(),
+                        $trackingHash,
+                        $leadId,
+                        $sms->getId(),
+                        $campaignEventId
+                    );
 
-                    if (true !== $metadata) {
+                    // get status from response
+                    try {
+                        $apiResponse = new ApiResponse($metadata);
+                        $status = $apiResponse->status();
+                    } catch (\Throwable $t) {
+                        // maybe metadata is false
+                    }
+
+                    if (false === $metadata) {
                         $sendResult['status'] = $metadata;
+                        $this->createStatEntry($sms, $lead, $trackingHash, ApiResponse::API_ERROR, $channel, true);
                     } else {
                         $sendResult['sent'] = true;
-                        $stats[]            = $this->createStatEntry($sms, $lead, $channel, false);
+                        $stats[]            = $this->createStatEntry($sms, $lead, $trackingHash, $status, $channel, false);
                         ++$sentCount;
                     }
 
@@ -331,17 +351,44 @@ class SmsModel extends FormModel implements AjaxLookupModelInterface
     /**
      * @param Sms  $sms
      * @param Lead $lead
+     * @param string $trackingHash
      * @param null $source
      * @param bool $persist
      *
      * @return Stat
      */
-    public function createStatEntry(Sms $sms, Lead $lead, $source = null, $persist = true)
+    public function createStatEntry(Sms $sms, Lead $lead, $trackingHash, $status, $source = null, $persist = true)
     {
         $stat = new Stat();
         $stat->setDateSent(new \DateTime());
         $stat->setLead($lead);
         $stat->setSms($sms);
+        $stat->setTrackingHash($trackingHash);
+
+        switch ($status) {
+            case ApiResponse::API_PENDING:
+                $stat->setIsPending(true)
+                     ->setIsDelivered(false)
+                     ->setHasFailed(false);
+            break;
+            case ApiResponse::API_DELIVERED:
+                $stat->setIsPending(false)
+                     ->setIsDelivered(true)
+                     ->setHasFailed(false);
+            break;
+            case ApiResponse::API_DNC:
+                $stat->setIsPending(false)
+                     ->setIsDelivered(false)
+                     ->setHasFailed(true);
+            break;
+            default:
+            case ApiResponse::API_ERROR:
+                $stat->setIsPending(false)
+                     ->setIsDelivered(false)
+                     ->setHasFailed(true);
+            break;
+        }
+
         if (is_array($source)) {
             $stat->setSourceId($source[1]);
             $source = $source[0];

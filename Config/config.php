@@ -85,8 +85,8 @@ return [
                 'class'     => 'MauticPlugin\MauticInfoBipSmsBundle\Api\InfoBipApi',
                 'arguments' => [
                     'mautic.page.model.trackable',
-                    'mautic.helper.phone_number',
                     'mautic.helper.integration',
+                    'mautic.helper.bundle',
                     'monolog.logger.mautic',
                 ],
                 'alias' => 'infobipsms_api',
@@ -160,5 +160,6 @@ return [
         'sms_sending_phone_number' => null,
         'sms_frequency_number'     => null,
         'sms_frequency_time'       => null,
+        'sms_callback_url'         => '',
     ],
 ];

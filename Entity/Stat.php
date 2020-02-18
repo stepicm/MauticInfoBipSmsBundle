@@ -69,6 +69,21 @@ class Stat
     private $sourceId;
 
     /**
+     * @var bool
+     */
+    private $isDelivered;
+
+    /**
+     * @var bool
+     */
+    private $isPending;
+
+    /**
+     * @var bool
+     */
+    private $hasFailed;
+
+    /**
      * @var array
      */
     private $tokens = [];
@@ -119,6 +134,21 @@ class Stat
             ->nullable()
             ->build();
 
+        $builder->createField('isDelivered', 'boolean')
+            ->columnName('is_delivered')
+            ->nullable()
+            ->build();
+
+        $builder->createField('isPending', 'boolean')
+            ->columnName('is_pending')
+            ->nullable()
+            ->build();
+
+        $builder->createField('hasFailed', 'boolean')
+            ->columnName('has_failed')
+            ->nullable()
+            ->build();
+
         $builder->createField('tokens', 'array')
             ->nullable()
             ->build();
@@ -140,6 +170,9 @@ class Stat
                     'source',
                     'sourceId',
                     'trackingHash',
+                    'isDelivered',
+                    'isPending',
+                    'hasFailed',
                     'lead',
                     'sms',
                 ]
@@ -311,6 +344,66 @@ class Stat
     public function setSourceId($sourceId)
     {
         $this->sourceId = $sourceId;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getIsDelivered()
+    {
+        return $this->isDelivered;
+    }
+
+    /**
+     * @param bool $isDelivered
+     *
+     * @return Stat
+     */
+    public function setIsDelivered($isDelivered)
+    {
+        $this->isDelivered = $isDelivered;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getIsPending()
+    {
+        return $this->isPending;
+    }
+
+    /**
+     * @param bool $isPending
+     *
+     * @return Stat
+     */
+    public function setIsPending($isPending)
+    {
+        $this->isPending = $isPending;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getHasFailed()
+    {
+        return $this->hasFailed;
+    }
+
+    /**
+     * @param bool $hasFailed
+     *
+     * @return Stat
+     */
+    public function setHasFailed($hasFailed)
+    {
+        $this->hasFailed = $hasFailed;
 
         return $this;
     }

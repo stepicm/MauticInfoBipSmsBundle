@@ -10,20 +10,17 @@
 
 namespace MauticPlugin\MauticInfoBipSmsBundle\Api;
 
-use libphonenumber\NumberParseException;
 use libphonenumber\PhoneNumberFormat;
 use libphonenumber\PhoneNumberUtil;
-use Mautic\CoreBundle\Helper\PhoneNumberHelper;
 use Mautic\PageBundle\Model\TrackableModel;
 use Mautic\PluginBundle\Helper\IntegrationHelper;
+use Mautic\CoreBundle\Helper\BundleHelper;
 use Monolog\Logger;
 
 class InfoBipApi extends AbstractSmsApi
 {
     private $username;
     private $password;
-
-
 
     /**
      * @var \Services_InfoBip
@@ -36,25 +33,26 @@ class InfoBipApi extends AbstractSmsApi
     protected $logger;
 
     /**
+     * @var BundleHelper
+     */
+    protected $bundlehelper;
+
+    /**
      * @var string
      */
     protected $sendingPhoneNumber;
-
-    
 
     /**
      * InfoBipApi constructor.
      *
      * @param TrackableModel    $pageTrackableModel
-     * @param PhoneNumberHelper $phoneNumberHelper
      * @param IntegrationHelper $integrationHelper
      * @param Logger            $logger
      */
-
-    // public function __construct(TrackableModel $pageTrackableModel, PhoneNumberHelper $phoneNumberHelper, IntegrationHelper $integrationHelper, Logger $logger, $username, $password)
-    public function __construct(TrackableModel $pageTrackableModel, PhoneNumberHelper $phoneNumberHelper, IntegrationHelper $integrationHelper, Logger $logger)
+    public function __construct(TrackableModel $pageTrackableModel, IntegrationHelper $integrationHelper, BundleHelper $bundlehelper, Logger $logger)
     {
         $this->logger = $logger;
+        $this->bundlehelper = $bundlehelper;
 
         $integration = $integrationHelper->getIntegrationObject('InfoBip');
 
@@ -63,7 +61,6 @@ class InfoBipApi extends AbstractSmsApi
 
             $keys = $integration->getDecryptedApiKeys();
 
-            //$this->client = new \Services_InfoBip($keys['username'], $keys['password']);
             $this->username = $keys['username'];
             $this->password = $keys['password'];
         }
@@ -79,62 +76,80 @@ class InfoBipApi extends AbstractSmsApi
     protected function sanitizeNumber($number)
     {
         $util   = PhoneNumberUtil::getInstance();
-        $parsed = $util->parse($number, 'US');
+        $parsed = $util->parse($number, null);
 
         return $util->format($parsed, PhoneNumberFormat::E164);
     }
 
     /**
      * @param string $number
-     * @param string $content
-     *
+     * @param string $messageBody
+     * @param string $trackingHash
+     * @param string $leadId
+     * @param string $smsId
+     * @param string $campaignId
      * @return bool|string
      */
-    public function sendSms($number, $content)
+    public function sendSms($number, $messageBody, $trackingHash = null, $leadId = null, $smsId = null, $campaignId = null)
     {
-
         if ($number === null) {
             return false;
         }
 
-        $messageBody = $content;
+        $url = "http://gv198.api.infobip.com/sms/2/text/advanced";
+        $curl = curl_init();
+        $configParams = $this->bundlehelper->getBundleConfig('MauticInfoBipSmsBundle', 'parameters', true);
 
-        try{
-            $number = $number;
-            
-            $url = "http://api.infobip.com/sms/1/text/single";
-            $curl = curl_init();
-            
-            $headers = [
-                'Authorization: Basic '. base64_encode("{$this->username}:{$this->password}"),
-                'Content-Type:application/json',
-                'Accept: application/json'
-            ];
-            
-            $data = [
+        $headers = [
+            'Authorization: Basic '. base64_encode("{$this->username}:{$this->password}"),
+            'Content-Type:application/json',
+            'Accept: application/json'
+        ];
+
+        $callbackData = json_encode([
+            'smsId' => $smsId,
+            'leadId' => $leadId,
+            'campaignId' => $campaignId,
+            'trackingHash' => $trackingHash,
+        ]);
+
+        $data = [
+            'bulkId' => sprintf('CNO-%s', $campaignId),
+            'messages' => [
                 'from' => $this->sendingPhoneNumber,
-                'to' => $number,
+                'destinations' => [
+                    [
+                        'to' => $number,
+                        'messageId' => $trackingHash,
+                    ],
+                ],
                 'text' => $messageBody,
-            ];
-            
-            curl_setopt($curl, CURLOPT_URL, $url);
-            curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
-            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
-            curl_exec($curl);
-            curl_close($curl);
-            
-        }
-        catch(Exception $e) {
+                'flash' => false,
+                'intermediateReport' => true,
+                'notifyUrl' => $configParams['sms_callback_url'],
+                'notifyContentType' => 'application/json',
+                'callbackData' => $callbackData,
+            ],
+        ];
+
+        curl_setopt($curl, CURLOPT_URL, $url);
+        curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
+
+        $result = curl_exec($curl);
+
+        if (curl_errno($curl)) {
             $this->logger->addWarning(
-                $e->getMessage(),
-                ['exception' => $e]
+                sprintf('Sms send error: %s', curl_error($curl)),
+                ['exception' => json_encode($result)]
             );
+
+            curl_close($curl);
             return false;
         }
 
-		return true;
-
+        curl_close($curl);
+		return $result;
     }
 }
-
