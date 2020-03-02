@@ -160,6 +160,7 @@ return [
         'sms_sending_phone_number' => null,
         'sms_frequency_number'     => null,
         'sms_frequency_time'       => null,
-        'sms_callback_url'         => '',
+        'sms_callback_url'         => null,
+        'sms_sender_addr'          => null,
     ],
 ];

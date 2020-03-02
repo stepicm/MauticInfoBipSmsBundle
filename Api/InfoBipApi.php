@@ -113,10 +113,12 @@ class InfoBipApi extends AbstractSmsApi
             'trackingHash' => $trackingHash,
         ]);
 
+        $sender = $configParams['sms_sender_addr'] ?? $this->sendingPhoneNumber;
+
         $data = [
             'bulkId' => sprintf('CNO-%s', $campaignId),
             'messages' => [
-                'from' => $this->sendingPhoneNumber,
+                'from' => $sender,
                 'destinations' => [
                     [
                         'to' => $number,
@@ -126,11 +128,14 @@ class InfoBipApi extends AbstractSmsApi
                 'text' => $messageBody,
                 'flash' => false,
                 'intermediateReport' => true,
-                'notifyUrl' => $configParams['sms_callback_url'],
-                'notifyContentType' => 'application/json',
-                'callbackData' => $callbackData,
             ],
         ];
+
+        if (isset($configParams['sms_callback_url'])) {
+            $data['messages']['notifyUrl'] = $configParams['sms_callback_url'];
+            $data['messages']['notifyContentType'] = 'application/json';
+            $data['messages']['callbackData'] = $callbackData;
+        }
 
         curl_setopt($curl, CURLOPT_URL, $url);
         curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
