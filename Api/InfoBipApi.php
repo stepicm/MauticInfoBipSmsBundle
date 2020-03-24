@@ -137,6 +137,12 @@ class InfoBipApi extends AbstractSmsApi
             $data['messages']['callbackData'] = $callbackData;
         }
 
+        if ($configParams['log_enabled']) {
+            $requestTimeString = '[' . date('Y/m/d H:i:s') . '] - ';
+            $logFileName = sprintf('%s/%s-infobip-requests.log', $configParams['log_path'], date('Y-m-d'));
+            file_put_contents($logFileName, $requestTimeString . json_encode($data) . PHP_EOL, FILE_APPEND);
+        }
+
         curl_setopt($curl, CURLOPT_URL, $url);
         curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);

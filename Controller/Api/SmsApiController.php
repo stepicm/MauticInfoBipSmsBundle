@@ -42,6 +42,8 @@ class SmsApiController extends CommonApiController
      */
     public function receiveAction()
     {
+        $configParams = $this->container->get('mautic.helper.bundle')->getBundleConfig('MauticInfoBipSmsBundle', 'parameters', true);
+        $requestTimeString = '[' . date('Y/m/d H:i:s') . '] - ';
         $body = $this->request->get('Body');
         $from = $this->request->get('From');
 
@@ -51,6 +53,13 @@ class SmsApiController extends CommonApiController
             // validate payload before taking action
             try {
                 $content = $this->decodeRequest($this->request->getContent());
+
+                // system logging
+                if ($configParams['log_enabled']) {
+                    $logFileName = sprintf('%s/%s-infobip-responses.log', $configParams['log_path'], date('Y-m-d'));
+                    file_put_contents($logFileName, $requestTimeString . json_encode($content) . PHP_EOL, FILE_APPEND);
+                }
+
                 $statRepo = $this->getDoctrine()->getManager()->getRepository(Stat::class);
                 $stat = $statRepo->findOneBy(['trackingHash' => $content['messageId']]);
             } catch (\Throwable $t) {
@@ -58,33 +67,47 @@ class SmsApiController extends CommonApiController
                  // but nothing yet
             }
 
-            switch ($content['status']) {
-                case ApiResponse::API_PENDING:
-                    $stat->setIsPending(true)
-                         ->setIsDelivered(false)
-                         ->setHasFailed(false);
-                break;
-                case ApiResponse::API_DELIVERED:
-                    $stat->setIsPending(false)
-                         ->setIsDelivered(true)
-                         ->setHasFailed(false);
-                break;
-                case ApiResponse::API_DNC:
-                    $stat->setIsPending(false)
-                         ->setIsDelivered(false)
-                         ->setHasFailed(true);
-                break;
-                default:
-                case ApiResponse::API_ERROR:
-                    $stat->setIsPending(false)
-                         ->setIsDelivered(false)
-                         ->setHasFailed(true);
-                break;
-            }
+            try {
+                switch ($content['status']) {
+                    case ApiResponse::API_PENDING:
+                        $stat->setIsPending(true)
+                            ->setIsDelivered(false)
+                            ->setHasFailed(false);
+                    break;
+                    case ApiResponse::API_DELIVERED:
+                        $stat->setIsPending(false)
+                            ->setIsDelivered(true)
+                            ->setHasFailed(false);
+                    break;
+                    case ApiResponse::API_DNC:
+                        $stat->setIsPending(false)
+                            ->setIsDelivered(false)
+                            ->setHasFailed(true);
+                    break;
+                    default:
+                    case ApiResponse::API_ERROR:
+                        $stat->setIsPending(false)
+                            ->setIsDelivered(false)
+                            ->setHasFailed(true);
+                    break;
+                }
 
-            $em = $this->getDoctrine()->getManager();
-            $em->persist($stat);
-            $em->flush();
+                $em = $this->getDoctrine()->getManager();
+                $em->persist($stat);
+                $em->flush();
+            } catch (\Throwable $t) {
+                if ($configParams['log_enabled']) {
+                    $logFileName = sprintf('%s/%s-infobip-error.log', $configParams['log_path'], date('Y-m-d'));
+                    $throwable = [
+                        'message' => $t->getMessage(),
+                        'file' => $t->getFile(),
+                        'line' => $t->getLine(),
+                        'trace' => $t->getTrace(),
+                    ];
+
+                    file_put_contents($logFileName, $requestTimeString . json_encode($throwable) . PHP_EOL, FILE_APPEND);
+                }
+            }
         }
 
         // Return an empty response

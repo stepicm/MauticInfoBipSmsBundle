@@ -162,5 +162,7 @@ return [
         'sms_frequency_time'       => null,
         'sms_callback_url'         => null,
         'sms_sender_addr'          => null,
+        'log_enabled'              => false,
+        'log_path'                 => null,
     ],
 ];
