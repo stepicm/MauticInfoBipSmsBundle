@@ -16,12 +16,20 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\FilterControllerEvent;
 use MauticPlugin\MauticInfoBipSmsBundle\Api\ApiResponse;
 use MauticPlugin\MauticInfoBipSmsBundle\Entity\Stat;
+use MauticPlugin\MauticInfoBipSmsBundle\Entity\DwhStats;
+use MauticPlugin\MauticInfoBipSmsBundle\Entity\CustomSimpleCampaign;
+use MauticPlugin\MauticInfoBipSmsBundle\Entity\CustomSimpleContact;
 
 /**
  * Class SmsApiController.
  */
 class SmsApiController extends CommonApiController
 {
+    const EVENT_DNC = 'dnc';
+    const EVENT_PENDING = 'pending';
+    const EVENT_FAIL = 'fail';
+    const EVENT_OK = 'sent';
+
     /**
      * {@inheritdoc}
      */
@@ -73,22 +81,26 @@ class SmsApiController extends CommonApiController
                         $stat->setIsPending(true)
                             ->setIsDelivered(false)
                             ->setHasFailed(false);
+                        $this->saveDwhStat($content['callbackData'], self::EVENT_PENDING);
                     break;
                     case ApiResponse::API_DELIVERED:
                         $stat->setIsPending(false)
                             ->setIsDelivered(true)
                             ->setHasFailed(false);
+                        $this->saveDwhStat($content['callbackData'], self::EVENT_OK);
                     break;
                     case ApiResponse::API_DNC:
                         $stat->setIsPending(false)
                             ->setIsDelivered(false)
                             ->setHasFailed(true);
+                        $this->saveDwhStat($content['callbackData'], self::EVENT_DNC);
                     break;
                     default:
                     case ApiResponse::API_ERROR:
                         $stat->setIsPending(false)
                             ->setIsDelivered(false)
                             ->setHasFailed(true);
+                        $this->saveDwhStat($content['callbackData'], self::EVENT_FAIL);
                     break;
                 }
 
@@ -123,5 +135,36 @@ class SmsApiController extends CommonApiController
         } catch (\Throwable $t) {
             return [];
         }
+    }
+
+    private function saveDwhStat($content, $status)
+    {
+        $campaign = $this->getDoctrine()->getManager()->getRepository(CustomSimpleCampaign::class)->findOneBy(['id' => $content['campaignId']]);
+        $lead = $this->getDoctrine()->getManager()->getRepository(CustomSimpleContact::class)->findOneBy(['id' => $content['leadId']]);
+        $params = [
+            'username' => $lead->getUsername(),
+            'player_id' => $lead->getPlayerId(),
+            'campaign_id' => $content['campaignId'],
+            'campaign_category_id' => $campaign->getCategoryId(),
+            'channel_id' => $content['smsId'],
+            'channel' => 'sms',
+            'event_ts' => time(),
+        ];
+
+        $date = new \DateTime();
+        $date->setTimestamp($params['event_ts']);
+
+        $dwhStat = new DwhStats();
+        $dwhStat->setUsername($params['username']);
+        $dwhStat->setPlayerId($params['player_id']);
+        $dwhStat->setCampaignId($params['campaign_id']);
+        $dwhStat->setChannelId($params['channel_id']);
+        $dwhStat->setCampaignCategoryId($params['campaign_category_id']);
+        $dwhStat->setEventType($status);
+        $dwhStat->setChannel('sms');
+        $dwhStat->setEventTs($date);
+
+        $this->getDoctrine()->getManager()->persist($dwhStat);
+        $this->getDoctrine()->getManager()->flush();
     }
 }

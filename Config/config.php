@@ -10,6 +10,9 @@
  */
 
 return [
+    'name'        => 'Infobip integration',
+    'description' => 'Allows to send SMS text messages with Infobip',
+    'version'     => '1.0.0',
     'services' => [
         'events' => [
             'mautic.infobip.sms.campaignbundle.subscriber' => [
@@ -88,6 +91,7 @@ return [
                     'mautic.helper.integration',
                     'mautic.helper.bundle',
                     'monolog.logger.mautic',
+                    'doctrine.orm.entity_manager',
                 ],
                 'alias' => 'infobipsms_api',
             ],
@@ -160,9 +164,9 @@ return [
         'sms_sending_phone_number' => null,
         'sms_frequency_number'     => null,
         'sms_frequency_time'       => null,
-        'sms_callback_url'         => null,
-        'sms_sender_addr'          => null,
-        'log_enabled'              => false,
-        'log_path'                 => null,
+        'sms_sender_addr'          => 'ArenaCasino',
+        'sms_callback_url'         => 'https://playground-stg.oryxgaming.com',
+        'log_enabled'              => true,
+        'log_path'                 => '/var/log/mautic',
     ],
 ];

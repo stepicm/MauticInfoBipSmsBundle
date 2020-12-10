@@ -15,10 +15,17 @@ use libphonenumber\PhoneNumberUtil;
 use Mautic\PageBundle\Model\TrackableModel;
 use Mautic\PluginBundle\Helper\IntegrationHelper;
 use Mautic\CoreBundle\Helper\BundleHelper;
+use MauticPlugin\MauticInfoBipSmsBundle\Entity\DwhStats;
+use MauticPlugin\MauticInfoBipSmsBundle\Entity\CustomSimpleCampaign;
+use MauticPlugin\MauticInfoBipSmsBundle\Entity\CustomSimpleContact;
+use Doctrine\ORM\EntityManager;
 use Monolog\Logger;
 
 class InfoBipApi extends AbstractSmsApi
 {
+    const EVENT_FAIL = 'fail';
+    const EVENT_OK = 'request';
+
     private $username;
     private $password;
 
@@ -49,10 +56,11 @@ class InfoBipApi extends AbstractSmsApi
      * @param IntegrationHelper $integrationHelper
      * @param Logger            $logger
      */
-    public function __construct(TrackableModel $pageTrackableModel, IntegrationHelper $integrationHelper, BundleHelper $bundlehelper, Logger $logger)
+    public function __construct(TrackableModel $pageTrackableModel, IntegrationHelper $integrationHelper, BundleHelper $bundlehelper, Logger $logger, EntityManager $doctrine)
     {
         $this->logger = $logger;
         $this->bundlehelper = $bundlehelper;
+        $this->em = $doctrine;
 
         $integration = $integrationHelper->getIntegrationObject('InfoBip');
 
@@ -143,6 +151,18 @@ class InfoBipApi extends AbstractSmsApi
             file_put_contents($logFileName, $requestTimeString . json_encode($data) . PHP_EOL, FILE_APPEND);
         }
 
+        $campaign = $this->em->getRepository(CustomSimpleCampaign::class)->findOneBy(['id' => $campaignId]);
+        $lead = $this->em->getRepository(CustomSimpleContact::class)->findOneBy(['id' => $leadId]);
+        $params = [
+            'username' => $lead->getUsername(),
+            'player_id' => $lead->getPlayerId(),
+            'campaign_id' => $campaignId,
+            'campaign_category_id' => $campaign->getCategoryId(),
+            'channel_id' => $smsId,
+            'channel' => 'sms',
+            'event_ts' => time(),
+        ];
+
         curl_setopt($curl, CURLOPT_URL, $url);
         curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
@@ -156,11 +176,32 @@ class InfoBipApi extends AbstractSmsApi
                 ['exception' => json_encode($result)]
             );
 
+            $this->saveDwhStat($params);
             curl_close($curl);
             return false;
         }
 
+        $this->saveDwhStat($params, self::EVENT_OK);
         curl_close($curl);
 		return $result;
+    }
+
+    private function saveDwhStat(array $params, $eventType = self::EVENT_FAIL)
+    {
+        $date = new \DateTime();
+        $date->setTimestamp($params['event_ts']);
+
+        $dwhStat = new DwhStats();
+        $dwhStat->setUsername($params['username']);
+        $dwhStat->setPlayerId($params['player_id']);
+        $dwhStat->setCampaignId($params['campaign_id']);
+        $dwhStat->setChannelId($params['channel_id']);
+        $dwhStat->setCampaignCategoryId($params['campaign_category_id']);
+        $dwhStat->setEventType($eventType);
+        $dwhStat->setChannel('sms');
+        $dwhStat->setEventTs($date);
+
+        $this->em->persist($dwhStat);
+        $this->em->flush();
     }
 }
