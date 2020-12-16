@@ -17,6 +17,7 @@ use Mautic\PluginBundle\Helper\IntegrationHelper;
 use Mautic\CoreBundle\Helper\BundleHelper;
 use MauticPlugin\MauticInfoBipSmsBundle\Entity\DwhStats;
 use MauticPlugin\MauticInfoBipSmsBundle\Entity\CustomSimpleCampaign;
+use MauticPlugin\MauticInfoBipSmsBundle\Entity\CustomSimpleCampaignEvent;
 use MauticPlugin\MauticInfoBipSmsBundle\Entity\CustomSimpleContact;
 use Doctrine\ORM\EntityManager;
 use Monolog\Logger;
@@ -98,11 +99,14 @@ class InfoBipApi extends AbstractSmsApi
      * @param string $campaignId
      * @return bool|string
      */
-    public function sendSms($number, $messageBody, $trackingHash = null, $leadId = null, $smsId = null, $campaignId = null)
+    public function sendSms($number, $messageBody, $trackingHash = null, $leadId = null, $smsId = null, $campaignEventId = null)
     {
         if ($number === null) {
             return false;
         }
+
+        $campaignEvent = $this->em->getRepository(CustomSimpleCampaignEvent::class)->findOneBy(['id' => $campaignEventId]);
+        $campaignId = $campaignEvent->getCampaignId();
 
         $url = "http://gv198.api.infobip.com/sms/2/text/advanced";
         $curl = curl_init();
@@ -153,6 +157,7 @@ class InfoBipApi extends AbstractSmsApi
 
         $campaign = $this->em->getRepository(CustomSimpleCampaign::class)->findOneBy(['id' => $campaignId]);
         $lead = $this->em->getRepository(CustomSimpleContact::class)->findOneBy(['id' => $leadId]);
+
         $params = [
             'username' => $lead->getUsername(),
             'player_id' => $lead->getPlayerId(),
