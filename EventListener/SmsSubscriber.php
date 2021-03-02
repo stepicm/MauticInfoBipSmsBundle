@@ -13,7 +13,6 @@ namespace MauticPlugin\MauticInfoBipSmsBundle\EventListener;
 
 use Mautic\AssetBundle\Helper\TokenHelper as AssetTokenHelper;
 use Mautic\CoreBundle\Event\TokenReplacementEvent;
-use Mautic\CoreBundle\EventListener\CommonSubscriber;
 use Mautic\CoreBundle\Model\AuditLogModel;
 use Mautic\LeadBundle\Entity\Lead;
 use Mautic\LeadBundle\Helper\TokenHelper;
@@ -22,11 +21,12 @@ use Mautic\PageBundle\Helper\TokenHelper as PageTokenHelper;
 use Mautic\PageBundle\Model\TrackableModel;
 use MauticPlugin\MauticInfoBipSmsBundle\Event\SmsEvent;
 use MauticPlugin\MauticInfoBipSmsBundle\SmsEvents;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Class CampaignSubscriber.
  */
-class SmsSubscriber extends CommonSubscriber
+class SmsSubscriber implements EventSubscriberInterface
 {
     /**
      * @var AuditLogModel

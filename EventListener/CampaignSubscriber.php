@@ -14,15 +14,15 @@ namespace MauticPlugin\MauticInfoBipSmsBundle\EventListener;
 use Mautic\CampaignBundle\CampaignEvents;
 use Mautic\CampaignBundle\Event\CampaignBuilderEvent;
 use Mautic\CampaignBundle\Event\CampaignExecutionEvent;
-use Mautic\CoreBundle\EventListener\CommonSubscriber;
 use Mautic\PluginBundle\Helper\IntegrationHelper;
 use MauticPlugin\MauticInfoBipSmsBundle\Model\SmsModel;
 use MauticPlugin\MauticInfoBipSmsBundle\SmsEvents;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Class CampaignSubscriber.
  */
-class CampaignSubscriber extends CommonSubscriber
+class CampaignSubscriber implements EventSubscriberInterface
 {
     /**
      * @var IntegrationHelper

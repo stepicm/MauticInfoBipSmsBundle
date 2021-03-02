@@ -14,15 +14,15 @@ namespace MauticPlugin\MauticInfoBipSmsBundle\EventListener;
 use Mautic\ChannelBundle\ChannelEvents;
 use Mautic\ChannelBundle\Event\ChannelEvent;
 use Mautic\ChannelBundle\Model\MessageModel;
-use Mautic\CoreBundle\EventListener\CommonSubscriber;
 use Mautic\LeadBundle\Model\LeadModel;
 use Mautic\PluginBundle\Helper\IntegrationHelper;
 use Mautic\ReportBundle\Model\ReportModel;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Class ChannelSubscriber.
  */
-class ChannelSubscriber extends CommonSubscriber
+class ChannelSubscriber implements EventSubscriberInterface
 {
     /**
      * @var IntegrationHelper

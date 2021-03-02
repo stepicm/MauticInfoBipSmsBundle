@@ -14,13 +14,13 @@ namespace MauticPlugin\MauticInfoBipSmsBundle\EventListener;
 use Mautic\ChannelBundle\ChannelEvents;
 use Mautic\ChannelBundle\Entity\MessageQueue;
 use Mautic\ChannelBundle\Event\MessageQueueBatchProcessEvent;
-use Mautic\CoreBundle\EventListener\CommonSubscriber;
 use MauticPlugin\MauticInfoBipSmsBundle\Model\SmsModel;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Class MessageQueueSubscriber.
  */
-class MessageQueueSubscriber extends CommonSubscriber
+class MessageQueueSubscriber implements EventSubscriberInterface
 {
     /**
      * @var SmsModel
