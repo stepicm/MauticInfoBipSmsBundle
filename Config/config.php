@@ -53,11 +53,6 @@ return [
         'forms' => [
             'mautic.infobip.form.type.sms' => [
                 'class'     => 'MauticPlugin\MauticInfoBipSmsBundle\Form\Type\SmsType',
-                'arguments' => [
-                    'translator',
-                    'doctrine.orm.entity_manager',
-                    'request_stack',
-                ],
                 'alias'     => 'infobipsms',
             ],
             'mautic.infobip.form.type.infobipsmsconfig' => [

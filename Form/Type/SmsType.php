@@ -15,24 +15,13 @@ use Mautic\CoreBundle\Form\EventListener\CleanFormSubscriber;
 use Mautic\CoreBundle\Form\EventListener\FormExitSubscriber;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormBuilderInterface;
-use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
  * Class SmsType.
  */
 class SmsType extends AbstractType
 {
-    private $translator;
-    private $em;
-    private $request;
-
-    public function __construct($translator, $em, $request)
-    {
-        $this->translator = $translator;
-        $this->em         = $em;
-        $this->request    = $request;
-    }
-
     /**
      * @param FormBuilderInterface $builder
      * @param array                $options
@@ -163,9 +152,9 @@ class SmsType extends AbstractType
     }
 
     /**
-     * @param OptionsResolverInterface $resolver
+     * @param OptionsResolver $resolver
      */
-    public function setDefaultOptions(OptionsResolverInterface $resolver)
+    public function setDefaultOptions(OptionsResolver $resolver)
     {
         $resolver->setDefaults(
             [
