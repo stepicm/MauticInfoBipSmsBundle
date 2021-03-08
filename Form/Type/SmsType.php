@@ -11,7 +11,6 @@
 
 namespace MauticPlugin\MauticInfoBipSmsBundle\Form\Type;
 
-use Mautic\CoreBundle\Factory\MauticFactory;
 use Mautic\CoreBundle\Form\EventListener\CleanFormSubscriber;
 use Mautic\CoreBundle\Form\EventListener\FormExitSubscriber;
 use Symfony\Component\Form\AbstractType;
@@ -27,14 +26,11 @@ class SmsType extends AbstractType
     private $em;
     private $request;
 
-    /**
-     * @param MauticFactory $factory
-     */
-    public function __construct(MauticFactory $factory)
+    public function __construct($translator, $em, $request)
     {
-        $this->translator = $factory->getTranslator();
-        $this->em         = $factory->getEntityManager();
-        $this->request    = $factory->getRequest();
+        $this->translator = $translator;
+        $this->em         = $em;
+        $this->request    = $request;
     }
 
     /**
